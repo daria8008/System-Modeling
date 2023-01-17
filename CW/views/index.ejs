@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+
+    <script
+      src="https://code.jquery.com/jquery-3.5.1.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.0/axios.min.js"
+      integrity="sha512-DZqqY3PiOvTP9HkjIWgjO6ouCbq+dxqWoJZ/Q+zPYNHmlnI2dQnbJ5bxAHpAMw+LXRm4D72EIRXzvcHQtE8/VQ=="
+      crossorigin="anonymous"
+    ></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
+      integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2"
+      crossorigin="anonymous"
+    />
+    <style>
+      .tab-header {
+        padding: 8px 0;
+        text-align: center;
+        background: #007bff;
+        color: #fff;
+        transition: all 0.5s;
+      }
+
+      .tab-header.active {
+        background: #28a745;
+      }
+
+      .tab-header:hover {
+        background: #17a2b8;
+      }
+
+      #model {
+        width: 100%;
+      }
+
+      #model svg {
+        max-width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app">
+      <div class="bg-dark p-2 d-flex">
+        <button class="btn btn-primary ml-2" @click="getStat">
+          Статистика
+        </button>
+        <label for="time" class="w-50 h2 mb-0 text-white">Час симуляції</label>
+        <input
+          class="form-control w-25 ml-auto"
+          type="text"
+          v-model="simulationTime"
+          id="time"
+          name="time"
+        />
+        <button class="btn btn-primary ml-2" @click="simulate">
+          Запустити
+        </button>
+      </div>
+      <div class="container-fluid" v-if="!showStat">
+        <div class="row">
+          <div class="col-12" v-if="logMain">
+            <div class="row">
+              <div class="col-6 pr-0">
+                <div
+                  class="tab-header"
+                  :class="{active: activeTab === 'Log'}"
+                  @click="activeTab = 'Log'"
+                >
+                  Логи
+                </div>
+              </div>
+              <div class="col-6 pl-0">
+                <div
+                  class="tab-header"
+                  :class="{active: activeTab === 'Result'}"
+                  @click="activeTab = 'Result'"
+                >
+                  Результати
+                </div>
+              </div>
+              <div class="col-12" v-if="activeTab === 'Log'">
+                <div class="card p-3">
+                  <span v-for="line in logMain">{{ line }} <br /></span>
+                </div>
+              </div>
+              <div class="col-12" v-else-if="activeTab === 'Result'">
+                <div class="card p-3">
+                  <div class="row">
+                    <div class="col-12">
+                      <div>
+                        Всього прийшло
+                        <b>{{ logResult.globalStats.quantity_1 }}</b>
+                        повідомлень 1 типу та
+                        <b>{{ logResult.globalStats.quantity_2 }}</b> 2 типу
+                      </div>
+                      <div>
+                        Прибуток від повідомлень 1 типу
+                        <b>{{ logResult.globalStats.income_1 }}</b>
+                      </div>
+                      <div>
+                        Прибуток від повідомлень 2 типу
+                        <b>{{ logResult.globalStats.income_2 }}</b>
+                      </div>
+                      <div>
+                        Загальний Прибуток
+                        <b>{{
+                          logResult.globalStats.income_1 +
+                            logResult.globalStats.income_2
+                        }}</b>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="card p-2 m-2">
+                        <div class="text-center h3">
+                          {{ logResult.elementsStats[0].name }}
+                        </div>
+                        <div>
+                          <b>Середній час очікування події: </b>
+                          {{ logResult.elementsStats[0].eventDelayAverage }}
+                        </div>
+                        <div>
+                          <b>Створено подій: </b>
+                          {{ logResult.elementsStats[0].quantity }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="card p-2 m-2">
+                        <div class="text-center h3">
+                          {{ logResult.elementsStats[1].name }}
+                        </div>
+                        <div>
+                          <b>Середній час очікування події: </b>
+                          {{ logResult.elementsStats[1].eventDelayAverage }}
+                        </div>
+                        <div>
+                          <b>Створено подій: </b>
+                          {{ logResult.elementsStats[1].quantity }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="card p-2 m-2">
+                        <div class="text-center h3">
+                          {{ logResult.elementsStats[2].name }}
+                        </div>
+                        <div>
+                          <b>Успішно оброблено подій: </b>
+                          {{ logResult.elementsStats[2].succeeded }}
+                        </div>
+                        <div>
+                          <b>Знищено події: </b>
+                          {{ logResult.elementsStats[2].failure }}
+                        </div>
+                        <div>
+                          <b>Середній час роботи: </b>
+                          {{ logResult.elementsStats[2].averageWorkTime }}
+                        </div>
+                        <div>
+                          <b>Середня довжина черги: </b>
+                          {{ logResult.elementsStats[2].averageQueueLength }}
+                        </div>
+                        <div>
+                          <b>Вірогідність відмови: </b>
+                          {{ logResult.elementsStats[2].failureProbability }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="card p-2 m-2">
+                        <div class="text-center h3">
+                          {{ logResult.elementsStats[3].name }}
+                        </div>
+                        <div>
+                          <b>Успішно оброблено подій: </b>
+                          {{ logResult.elementsStats[3].succeeded }}
+                        </div>
+                        <div>
+                          <b>Знищено події: </b>
+                          {{ logResult.elementsStats[3].failure }}
+                        </div>
+                        <div>
+                          <b>Максимальна спостережувана черга: </b>
+                          {{
+                            logResult.elementsStats[3].maxObservedQueueLength
+                          }}
+                        </div>
+                        <div>
+                          <b>Середній час роботи: </b>
+                          {{ logResult.elementsStats[3].averageWorkTime }}
+                        </div>
+                        <div>
+                          <b>Середня довжина черги: </b>
+                          {{ logResult.elementsStats[3].averageQueueLength }}
+                        </div>
+                        <div>
+                          <b>Вірогідність відмови: </b>
+                          {{ logResult.elementsStats[3].failureProbability }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="card p-2 m-2">
+                        <div class="text-center h3">
+                          {{ logResult.elementsStats[4].name }}
+                        </div>
+                        <div>
+                          <b>Успішно оброблено подій: </b>
+                          {{ logResult.elementsStats[4].succeeded }}
+                        </div>
+                        <div>
+                          <b>Знищено події: </b>
+                          {{ logResult.elementsStats[4].failure }}
+                        </div>
+                        <div>
+                          <b>Максимальна спостережувана черга: </b>
+                          {{
+                            logResult.elementsStats[4].maxObservedQueueLength
+                          }}
+                        </div>
+                        <div>
+                          <b>Середній час роботи: </b>
+                          {{ logResult.elementsStats[4].averageWorkTime }}
+                        </div>
+                        <div>
+                          <b>Середня довжина черги: </b>
+                          {{ logResult.elementsStats[4].averageQueueLength }}
+                        </div>
+                        <div>
+                          <b>Вірогідність відмови: </b>
+                          {{ logResult.elementsStats[4].failureProbability }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12" v-else>
+            <div class="display-4 text-center">
+              Введіть час та запустіть симуляцію
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="p-5 mx-auto d-flex" v-else>
+        <canvas
+          style="max-width: 500px"
+          id="myChart"
+          width="100"
+          height="100"
+        ></canvas>
+        <div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">z1 Count</th>
+                <th scope="col">z2 Count</th>
+                <th scope="col">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in tableInfo">
+                <td >{{item.z1}}</td>
+                <td >{{item.z2}}</td>
+                <td >{{item.result}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#app",
+        data: () => ({
+          showStat: false,
+          stats: null,
+          tableInfo: null,
+          simulationTime: 100,
+          logMain: null,
+          logResult: null,
+          stateLogs: null,
+          activeTab: "Log",
+          stateConfig: {
+            create_1: {
+              isActive: false,
+            },
+            create_2: {
+              isActive: false,
+            },
+            process: {
+              isActive: false,
+              queue: 0,
+            },
+            line_1: {
+              isActive: false,
+              queue: 0,
+            },
+            line_2: {
+              isActive: false,
+              queue: 0,
+            },
+          },
+        }),
+        methods: {
+          showSimulation() {
+            let self = this;
+            const iteration = async (i) => {
+              let log = this.stateLogs[i];
+              switch (log.name) {
+                case "Прийшло повідомлення 1 типу":
+                  this.stateConfig.create_1.isActive = true;
+                  break;
+                case "Прийшло повідомлення 1 типу":
+                  this.stateConfig.create_2.isActive = true;
+                  break;
+                case "Процессор":
+                  this.stateConfig.process.isActive = true;
+                  this.stateConfig.process.queue = log.queue;
+                  break;
+                case "Лінія 1":
+                  this.stateConfig.line_1.isActive = true;
+                  this.stateConfig.line_1.queue = log.queue;
+                  break;
+                case "Лінія 2":
+                  this.stateConfig.line_2.isActive = true;
+                  this.stateConfig.line_2.queue = log.queue;
+                  break;
+              }
+              await setTimeout((self) => {
+                this.stateConfig = {
+                  create_1: {
+                    isActive: false,
+                  },
+                  create_2: {
+                    isActive: false,
+                  },
+                  process: {
+                    isActive: false,
+                    queue: this.stateConfig.process.queue,
+                  },
+                  line_1: {
+                    isActive: false,
+                    queue: this.stateConfig.line_1.queue,
+                  },
+                  line_2: {
+                    isActive: false,
+                    queue: this.stateConfig.line_2.queue,
+                  },
+                };
+                i++;
+                if (i < this.stateLogs.length) iteration(i);
+              }, 50);
+            };
+            this.$nextTick(() => {
+              iteration(0);
+            });
+          },
+          simulate() {
+            axios
+              .post("/simulate", { simulationTime: this.simulationTime })
+              .then((res) => {
+                debugger;
+                this.logMain = res.data.logs.main;
+                this.logResult = res.data.logs.result;
+                this.stateLogs = res.data.stateLogs;
+              });
+          },
+          getStat() {
+            this.showStat = true;
+
+            axios
+              .post("/statistic", { simulationTime: this.simulationTime })
+              .then((res) => {
+                this.stats = res.data.time_result;
+                this.tableInfo = res.data.stats;
+                let labels = this.stats.map((item) => item.time);
+                let data = this.stats.map((item) => item.profit);
+                var config = {
+                  type: "line",
+                  data: {
+                    labels: labels,
+                    datasets: [
+                      {
+                        label: "profit",
+                        data: data,
+                        fill: false,
+                      },
+                    ],
+                  },
+                  options: {},
+                };
+                var ctx = document.getElementById("myChart").getContext("2d");
+                let myLine = new Chart(ctx, config);
+              });
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
